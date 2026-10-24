@@ -6,8 +6,13 @@ export default {
   'status.notConnected': 'Not connected',
   'hint.connect': 'Switch the chain on, hold your phone close and tap “Connect”.',
   'button.connect': 'Connect',
-  'button.disconnect': 'Disconnect',
+  'button.addLight': 'Add light',
   'button.showAll': 'Chain not in the list? Show all devices',
+
+  'lights.aria': 'Lights',
+  'lights.all': 'All',
+  'lights.renameAria': 'Rename light',
+  'lights.nameAria': 'Light name',
 
   'power.on': 'On',
   'power.off': 'Off',

@@ -6,8 +6,13 @@ export default {
   'status.notConnected': 'Nicht verbunden',
   'hint.connect': 'Kette einschalten, in die Nähe halten und auf „Verbinden“ tippen.',
   'button.connect': 'Verbinden',
-  'button.disconnect': 'Trennen',
+  'button.addLight': 'Licht hinzufügen',
   'button.showAll': 'Kette nicht in der Liste? Alle Geräte zeigen',
+
+  'lights.aria': 'Lichter',
+  'lights.all': 'Alle',
+  'lights.renameAria': 'Licht umbenennen',
+  'lights.nameAria': 'Name des Lichts',
 
   'power.on': 'An',
   'power.off': 'Aus',

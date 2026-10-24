@@ -16,6 +16,10 @@ export const KEYS = {
   favorites: 'favs',
   autoConnect: 'auto',
   deviceId: 'deviceId',
+  /** Light the controls act on: a device id or 'all'. */
+  target: 'target',
+  /** Custom light names, by 'id:<device id>' and 'name:<Bluetooth name>'. */
+  lightNames: 'lightNames',
   alarms: 'alarms',
   /** Marker that the alarms were switched to sunset/sunrise (old name, kept for compatibility). */
   alarmsMigrated: 'alv2',

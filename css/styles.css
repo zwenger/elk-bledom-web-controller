@@ -87,6 +87,82 @@ h1 {
   background: var(--green);
   box-shadow: 0 0 8px var(--green);
 }
+/* Light list: a row of chips on phones, a column beside the app on wide screens */
+.lights {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.lights[hidden] {
+  display: none;
+}
+.light {
+  display: flex;
+  align-items: center;
+  flex: none;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--label2);
+  font-size: 15px;
+  white-space: nowrap;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.light.sel {
+  background: var(--card2);
+  color: var(--label);
+  box-shadow: inset 0 0 0 1.5px var(--blue);
+}
+.light-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 14px;
+  text-align: left;
+}
+.light-edit {
+  padding: 8px 14px 8px 2px;
+  color: var(--label2);
+}
+.light-name {
+  width: 150px;
+  min-width: 0;
+  margin-left: -6px;
+  padding: 8px 14px 8px 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+@media (min-width: 1000px) {
+  .lights {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top));
+    left: calc(50% - 476px);
+    width: 220px;
+    flex-direction: column;
+    margin: 14px 0 0;
+    overflow: visible;
+  }
+  .light {
+    border-radius: 12px;
+  }
+  .light-pick,
+  .light-edit,
+  .light-name {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .light-name {
+    flex: 1;
+  }
+}
 .banner {
   display: none;
   margin: 16px 0 0;

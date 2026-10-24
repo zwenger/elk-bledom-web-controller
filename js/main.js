@@ -7,7 +7,7 @@
  *   schedule ┘                    Schedule (sun times, the chain's clock)
  */
 import { LOCATION, RESYNC_INTERVAL_MS } from './config.js';
-import { ChainConnection } from './bluetooth.js';
+import { LightGroup } from './light-group.js';
 import * as protocol from './protocol.js';
 import { Schedule } from './schedule.js';
 import { lightState } from './state.js';
@@ -19,17 +19,22 @@ import { initBrightness } from './ui/slider.js';
 import { initColors } from './ui/colors.js';
 import { initEffects } from './ui/effects.js';
 import { initFavorites } from './ui/favorites.js';
+import { initLights } from './ui/lights.js';
 import { initPower } from './ui/power.js';
 import { initScheduleView } from './ui/schedule-view.js';
 import { setConnectedUi, setStatus, showSupportProblem } from './ui/status.js';
 
-const chain = new ChainConnection({
+// All paired lights; the controls act on the light selected in the list (or on all of them)
+const chain = new LightGroup({
   storage,
   isAutoConnectEnabled: () => storage.get(KEYS.autoConnect, true),
 });
-const send = (bytes, key) => chain.send(bytes, key);
+// Clock and schedule belong to every light, not only the selected one
+const send = (bytes, key) => chain.sendAll(bytes, key);
 
 const schedule = new Schedule({ storage, send, coords: LOCATION });
+
+initLights({ group: chain });
 
 const power = initPower({ chain, state: lightState, storage });
 const colors = initColors({ chain, state: lightState, storage });
@@ -74,7 +79,8 @@ chain.addEventListener('connectionchange', (event) => {
   }
 });
 
-$('connect').addEventListener('click', () => (chain.isConnected ? chain.disconnect() : chain.connectWithPicker()));
+// Always pairs another light; the paired ones stay connected and are picked from the list
+$('connect').addEventListener('click', () => chain.connectWithPicker());
 $('connectAll').addEventListener('click', () => chain.connectWithPicker({ showAllDevices: true }));
 $('connectAll').hidden = isIos(); // on iOS the picker already lists all devices
 

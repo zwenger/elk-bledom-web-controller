@@ -35,6 +35,21 @@ export function friendlyError(error) {
   }
 }
 
+/**
+ * Options for the picker dialog (`requestDevice`).
+ * @param {object} [options]
+ * @param {boolean} [options.showAllDevices] list every Bluetooth device instead of only known controllers.
+ *   Always on for iOS: Bluefy does not list the chain when a name/service filter is used.
+ */
+export function pickerOptions({ showAllDevices = false } = {}) {
+  return showAllDevices || isIos()
+    ? { acceptAllDevices: true, optionalServices: [BLE.service] }
+    : {
+        filters: [...BLE.namePrefixes.map((namePrefix) => ({ namePrefix })), { services: [BLE.service] }],
+        optionalServices: [BLE.service],
+      };
+}
+
 export class ChainConnection extends EventTarget {
   /** @type {BluetoothDevice | null} */ #device = null;
   /** @type {BluetoothRemoteGATTCharacteristic | null} */ #characteristic = null;
@@ -72,6 +87,27 @@ export class ChainConnection extends EventTarget {
     return Boolean(this.#device?.gatt?.connected);
   }
 
+  /** Id of the attached device, or `null`. */
+  get deviceId() {
+    return this.#device?.id ?? null;
+  }
+
+  /** Bluetooth name of the attached device. */
+  get name() {
+    return this.#device ? this.#nameOf(this.#device) : '';
+  }
+
+  /**
+   * Connects to a known device without a dialog. If it is out of range, waits for its signal.
+   * @param {BluetoothDevice} device
+   */
+  async connectDevice(device) {
+    this.#attach(device);
+    if (this.isConnected) return;
+    this.#userDisconnected = false;
+    await this.#connectOrWait(device);
+  }
+
   /**
    * Sends a packet to the chain. Packets with the same `key` replace each other (last value wins).
    * @param {Uint8Array} bytes
@@ -91,14 +127,7 @@ export class ChainConnection extends EventTarget {
     this.#stopWatching();
     try {
       this.#emitStatus(t('ble.searching'));
-      const device = await navigator.bluetooth.requestDevice(
-        showAllDevices || isIos()
-          ? { acceptAllDevices: true, optionalServices: [BLE.service] }
-          : {
-              filters: [...BLE.namePrefixes.map((namePrefix) => ({ namePrefix })), { services: [BLE.service] }],
-              optionalServices: [BLE.service],
-            },
-      );
+      const device = await navigator.bluetooth.requestDevice(pickerOptions({ showAllDevices }));
       this.#attach(device);
       this.#storage.set(KEYS.deviceId, device.id);
       this.#userDisconnected = false;
@@ -158,18 +187,22 @@ export class ChainConnection extends EventTarget {
       const device = devices.find((d) => d.id === savedId) ?? devices[0];
       this.#attach(device);
       this.#emitStatus(t('ble.autoConnecting', { name: this.#nameOf(device) }));
-
-      try {
-        await this.#openGatt();
-        return;
-      } catch {
-        /* probably out of range: wait for the chain's signal */
-      }
-      if (await this.#waitForAdvertisement(device)) return;
-      this.#emitStatus(t('ble.notFoundTap'));
+      await this.#connectOrWait(device);
     } finally {
       this.#autoConnectBusy = false;
     }
+  }
+
+  /** @param {BluetoothDevice} device */
+  async #connectOrWait(device) {
+    try {
+      await this.#openGatt();
+      return;
+    } catch {
+      /* probably out of range: wait for the chain's signal */
+    }
+    if (await this.#waitForAdvertisement(device)) return;
+    this.#emitStatus(t('ble.notFoundTap'));
   }
 
   /**
@@ -251,7 +284,10 @@ export class ChainConnection extends EventTarget {
       }
     }
     this.#emitStatus(t('ble.lost'));
-    this.autoConnect();
+    // Wait for this connection's own device: with several lights, `autoConnect()` could pick another one.
+    if (!this.#userDisconnected && this.#isAutoConnectEnabled() && this.#device) {
+      await this.#waitForAdvertisement(this.#device);
+    }
   }
 
   #nameOf(device) {

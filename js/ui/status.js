@@ -17,7 +17,7 @@ export function setConnectedUi(connected) {
     .querySelectorAll('.lock :is(button, input), #powerSeg button, #clockNow')
     .forEach((element) => (element.disabled = !connected));
   const button = $('connect');
-  button.textContent = t(connected ? 'button.disconnect' : 'button.connect');
+  button.textContent = t(connected ? 'button.addLight' : 'button.connect');
   button.classList.toggle('ghost', connected);
 }
 
