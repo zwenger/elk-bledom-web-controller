@@ -13,6 +13,8 @@ export default {
   'lights.all': 'All',
   'lights.renameAria': 'Rename light',
   'lights.nameAria': 'Light name',
+  'lights.removeAria': 'Remove light',
+  'lights.removeConfirm': 'Remove?',
 
   'power.on': 'On',
   'power.off': 'Off',

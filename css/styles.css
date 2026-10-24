@@ -126,8 +126,17 @@ h1 {
   text-align: left;
 }
 .light-edit {
-  padding: 8px 14px 8px 2px;
+  padding: 8px 6px 8px 2px;
   color: var(--label2);
+}
+.light-remove {
+  padding: 8px 14px 8px 6px;
+  color: var(--label2);
+  white-space: nowrap;
+}
+.light-remove.confirm {
+  color: var(--red);
+  font-weight: 600;
 }
 .light-name {
   width: 150px;
@@ -155,6 +164,7 @@ h1 {
   }
   .light-pick,
   .light-edit,
+  .light-remove,
   .light-name {
     padding-top: 12px;
     padding-bottom: 12px;

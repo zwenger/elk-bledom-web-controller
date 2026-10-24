@@ -28,6 +28,10 @@ class FakeConnection extends EventTarget {
     this.sent.push({ bytes, key });
   }
   setAutoConnect() {}
+  async forget() {
+    this.forgotten = true;
+    this.connected = false;
+  }
 }
 
 function setup({ paired = [], picked = [], saved = {}, data = new Map() } = {}) {
@@ -185,4 +189,62 @@ test('renaming announces a list change', async () => {
   group.addEventListener('lightschange', () => changes++);
   group.rename('a', 'Tira');
   assert.equal(changes, 1);
+});
+
+const neighbor = { id: 'n', name: 'ELK-BLEDOM' };
+
+test('removing a light drops it from the list and forgets the device', async () => {
+  const { group, connections } = setup({ paired: [strip, neighbor] });
+  await group.autoConnect();
+  await group.remove('n');
+  assert.deepEqual(
+    group.lights.map((light) => light.id),
+    ['a'],
+  );
+  assert.equal(connections[1].forgotten, true);
+});
+
+test('removing the selected light selects all lights', async () => {
+  const { group } = setup({ paired: [strip, neighbor] });
+  await group.autoConnect();
+  group.select('n');
+  await group.remove('n');
+  assert.equal(group.target, ALL);
+});
+
+test('a removed light is not connected again when the browser still lists it', async () => {
+  const first = setup({ paired: [strip, neighbor] });
+  await first.group.autoConnect();
+  await first.group.remove('n');
+
+  const second = setup({ paired: [strip, neighbor], data: first.data });
+  await second.group.autoConnect();
+  assert.deepEqual(
+    second.group.lights.map((light) => light.id),
+    ['a'],
+  );
+  assert.equal(second.connections.length, 1);
+});
+
+test('pairing a removed light again brings it back', async () => {
+  const first = setup({ paired: [strip, neighbor] });
+  await first.group.autoConnect();
+  await first.group.remove('n');
+
+  const second = setup({ paired: [strip, neighbor], picked: [neighbor], data: first.data });
+  await second.group.autoConnect();
+  await second.group.connectWithPicker();
+  assert.deepEqual(
+    second.group.lights.map((light) => light.id),
+    ['a', 'n'],
+  );
+});
+
+test('removing a light deletes its custom name', async () => {
+  const { group } = setup({ paired: [neighbor], picked: [neighbor] });
+  await group.autoConnect();
+  group.rename('n', 'Vecino');
+  await group.remove('n');
+  await group.connectWithPicker();
+  assert.equal(nameOf(group, 'n'), 'ELK-BLEDOM');
 });

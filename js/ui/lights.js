@@ -1,11 +1,14 @@
 /**
  * List of paired lights: one tap selects which light the controls act on.
  * The selected light has a pencil button to rename it (Enter saves, Escape cancels, empty restores the
- * Bluetooth name).
+ * Bluetooth name) and a remove button that asks for a second tap.
  */
 import { t } from '../i18n.js';
 import { ALL } from '../light-group.js';
 import { $, haptic } from './dom.js';
+
+/** How long the remove button waits for the confirming second tap. */
+const REMOVE_CONFIRM_MS = 3000;
 
 /** @param {{ group: import('../light-group.js').LightGroup }} options */
 export function initLights({ group }) {
@@ -14,6 +17,9 @@ export function initLights({ group }) {
   let editing = null;
   /** Some browsers fire `blur` when the list replaces a focused input; that is not the user leaving the field. */
   let rendering = false;
+  /** Light whose remove button waits for the confirming second tap. */
+  let removing = null;
+  let removeTimer;
 
   const finishEditing = (save) => {
     if (!editing) return;
@@ -76,7 +82,31 @@ export function initLights({ group }) {
         render();
         list.querySelector('.light-name')?.select();
       });
-      row.append(edit);
+
+      // Two taps: the first one only asks, so a light is never removed by accident
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'light-remove';
+      const confirming = removing === id;
+      remove.classList.toggle('confirm', confirming);
+      remove.textContent = confirming ? t('lights.removeConfirm') : '✕';
+      remove.setAttribute('aria-label', t(confirming ? 'lights.removeConfirm' : 'lights.removeAria'));
+      remove.addEventListener('click', () => {
+        haptic();
+        clearTimeout(removeTimer);
+        if (removing === id) {
+          removing = null;
+          group.remove(id);
+          return;
+        }
+        removing = id;
+        removeTimer = setTimeout(() => {
+          removing = null;
+          render();
+        }, REMOVE_CONFIRM_MS);
+        render();
+      });
+      row.append(edit, remove);
     }
     return row;
   };

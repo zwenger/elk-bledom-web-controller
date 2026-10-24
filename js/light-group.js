@@ -6,6 +6,9 @@
  * `ChainConnection`, so the UI modules work unchanged, plus:
  *   - `lightschange` the list of lights, their names, their connection or the selection changed
  *
+ * Removed lights are remembered as well: browsers without `BluetoothDevice.forget()` keep listing them in
+ * `getDevices()`, and they must not come back on the next start.
+ *
  * Custom names are stored by device id and by Bluetooth name, so they survive a new pairing that changes the id.
  */
 import { ChainConnection, friendlyError, pickerOptions } from './bluetooth.js';
@@ -76,6 +79,25 @@ export class LightGroup extends EventTarget {
     this.dispatchEvent(new CustomEvent('lightschange'));
   }
 
+  /**
+   * Removes a light: disconnects it, revokes the browser permission and deletes its custom name.
+   * Pairing it again with the picker brings it back.
+   * @param {string} id
+   */
+  async remove(id) {
+    const light = this.#lights.get(id);
+    if (!light) return;
+    const names = { ...this.#storage.get(KEYS.lightNames, {}) };
+    delete names['id:' + id];
+    delete names['name:' + clean(light.name)];
+    this.#storage.set(KEYS.lightNames, names);
+    this.#setRemoved(id, true);
+    this.#lights.delete(id);
+    if (this.#target === id) this.select(ALL);
+    else this.#emitChange();
+    await light.forget();
+  }
+
   /** `ALL` or the id of the selected light. */
   get target() {
     return this.#lights.has(this.#target) ? this.#target : ALL;
@@ -116,6 +138,7 @@ export class LightGroup extends EventTarget {
       this.#emitStatus(friendlyError(error));
       return;
     }
+    this.#setRemoved(device.id, false);
     const light = this.#add(device);
     this.select(device.id);
     await light.connectDevice(device);
@@ -136,7 +159,8 @@ export class LightGroup extends EventTarget {
     }
     let devices;
     try {
-      devices = await this.#bluetooth.getDevices();
+      const removed = this.#storage.get(KEYS.removedLights, []);
+      devices = (await this.#bluetooth.getDevices()).filter((device) => !removed.includes(device.id));
     } catch {
       this.#emitStatus(t('ble.tapConnect'));
       return;
@@ -163,6 +187,11 @@ export class LightGroup extends EventTarget {
     this.#lights.set(device.id, light);
     this.#emitChange();
     return light;
+  }
+
+  #setRemoved(id, removed) {
+    const ids = this.#storage.get(KEYS.removedLights, []).filter((other) => other !== id);
+    this.#storage.set(KEYS.removedLights, removed ? [...ids, id] : ids);
   }
 
   #targets() {

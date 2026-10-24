@@ -20,6 +20,8 @@ export const KEYS = {
   target: 'target',
   /** Custom light names, by 'id:<device id>' and 'name:<Bluetooth name>'. */
   lightNames: 'lightNames',
+  /** Device ids the user removed; skipped on auto-connect until paired again. */
+  removedLights: 'removedLights',
   alarms: 'alarms',
   /** Marker that the alarms were switched to sunset/sunrise (old name, kept for compatibility). */
   alarmsMigrated: 'alv2',

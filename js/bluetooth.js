@@ -145,6 +145,22 @@ export class ChainConnection extends EventTarget {
     this.#device?.gatt?.disconnect();
   }
 
+  /**
+   * Disconnects for good and revokes the page's permission for the device, so `getDevices()` no longer lists it.
+   * `forget()` is missing in some browsers; the caller then has to skip the device itself.
+   */
+  async forget() {
+    this.#stopWatching();
+    const device = this.#device;
+    if (device?.gatt?.connected) this.disconnect();
+    else this.#userDisconnected = true;
+    try {
+      await device?.forget?.();
+    } catch {
+      /* already forgotten or not allowed: the caller skips the device anyway */
+    }
+  }
+
   /** The "auto-connect" switch changed. @param {boolean} enabled */
   setAutoConnect(enabled) {
     if (enabled) {
