@@ -1,7 +1,7 @@
 {
-  "name": "Lichterkette",
-  "short_name": "Lichter",
-  "description": "Eigene Steuerung für die Bluetooth-Lichterkette",
+  "name": "Lights",
+  "short_name": "Lights",
+  "description": "Control for Bluetooth LED lights with an ELK-BLEDOM / MELK controller",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -25,6 +25,6 @@
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

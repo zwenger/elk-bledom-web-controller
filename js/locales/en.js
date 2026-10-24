@@ -1,6 +1,6 @@
 /** English texts (also the fallback language). Keep the keys identical to de.js. */
 export default {
-  'doc.title': 'Lichterkette',
+  'doc.title': 'Lights',
   'doc.description': 'Control for Bluetooth light chains with an ELK-BLEDOM / MELK controller',
 
   'status.notConnected': 'Not connected',

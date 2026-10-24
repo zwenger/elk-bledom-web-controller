@@ -5,7 +5,7 @@
  * When adding files to js/ or css/, add them to the PRECACHE list (test/sw.test.js checks this),
  * and bump CACHE_VERSION for larger changes.
  */
-const CACHE_VERSION = 'lichterkette-v5';
+const CACHE_VERSION = 'lichterkette-v6';
 
 const PRECACHE = [
   './',
@@ -36,7 +36,9 @@ const PRECACHE = [
   './js/ui/schedule-view.js',
   './js/ui/slider.js',
   './js/ui/status.js',
+  './icons/favicon-32.png',
   './icons/icon-192.png',
+  './icons/icon-maskable-512.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
 ];

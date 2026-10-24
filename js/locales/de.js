@@ -1,6 +1,6 @@
 /** German texts. Keep the keys identical to en.js (checked by test/i18n.test.js). */
 export default {
-  'doc.title': 'Lichterkette',
+  'doc.title': 'Lichter',
   'doc.description': 'Steuerung für Bluetooth-Lichterketten mit ELK-BLEDOM / MELK Controller',
 
   'status.notConnected': 'Nicht verbunden',
