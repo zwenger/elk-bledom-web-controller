@@ -55,6 +55,7 @@ export class ChainConnection extends EventTarget {
   /** @type {BluetoothRemoteGATTCharacteristic | null} */ #characteristic = null;
   #storage;
   #isAutoConnectEnabled;
+  #displayName;
   #queue;
   #attached = new WeakSet();
   /** The user disconnected on purpose: do not reconnect automatically. */
@@ -68,17 +69,20 @@ export class ChainConnection extends EventTarget {
    * @param {object} options
    * @param {ReturnType<import('./storage.js').createStorage>} options.storage
    * @param {() => boolean} options.isAutoConnectEnabled
+   * @param {(device: BluetoothDevice) => string} [options.displayName] name used in status texts
+   *   (for example a name the user gave the light); defaults to the Bluetooth name
    */
-  constructor({ storage, isAutoConnectEnabled }) {
+  constructor({ storage, isAutoConnectEnabled, displayName }) {
     super();
     this.#storage = storage;
+    this.#displayName = displayName;
     this.#isAutoConnectEnabled = isAutoConnectEnabled;
     this.#queue = new WriteQueue({
       getCharacteristic: () => this.#characteristic,
       intervalMs: WRITE_INTERVAL_MS,
       onError: (error) => {
         console.warn('Write error', error);
-        this.#emitStatus(t('ble.writeFailed'));
+        this.#emitStatus(t('ble.writeFailed', { name: this.#currentName() }));
       },
     });
   }
@@ -94,7 +98,7 @@ export class ChainConnection extends EventTarget {
 
   /** Bluetooth name of the attached device. */
   get name() {
-    return this.#device ? this.#nameOf(this.#device) : '';
+    return this.#device ? this.#device.name || t('ble.defaultName') : '';
   }
 
   /**
@@ -218,7 +222,7 @@ export class ChainConnection extends EventTarget {
       /* probably out of range: wait for the chain's signal */
     }
     if (await this.#waitForAdvertisement(device)) return;
-    this.#emitStatus(t('ble.notFoundTap'));
+    this.#emitStatus(t('ble.notFoundTap', { name: this.#nameOf(device) }));
   }
 
   /**
@@ -238,14 +242,14 @@ export class ChainConnection extends EventTarget {
       try {
         await this.#openGatt();
       } catch {
-        this.#emitStatus(t('ble.connectFailed'));
+        this.#emitStatus(t('ble.connectFailed', { name: this.#nameOf(device) }));
       }
     };
     device.addEventListener('advertisementreceived', onAdvertisement);
 
     try {
       await device.watchAdvertisements({ signal: controller.signal });
-      this.#emitStatus(t('ble.waiting'));
+      this.#emitStatus(t('ble.waiting', { name: this.#nameOf(device) }));
       return true;
     } catch {
       device.removeEventListener('advertisementreceived', onAdvertisement);
@@ -289,7 +293,7 @@ export class ChainConnection extends EventTarget {
       this.#emitStatus(t('ble.disconnected'));
       return;
     }
-    this.#emitStatus(t('ble.lostRetry'));
+    this.#emitStatus(t('ble.lostRetry', { name: this.#currentName() }));
     for (let attempt = 0; attempt < RECONNECT_ATTEMPTS; attempt++) {
       try {
         await new Promise((resolve) => setTimeout(resolve, RECONNECT_DELAY_MS));
@@ -299,7 +303,7 @@ export class ChainConnection extends EventTarget {
         /* next attempt */
       }
     }
-    this.#emitStatus(t('ble.lost'));
+    this.#emitStatus(t('ble.lost', { name: this.#currentName() }));
     // Wait for this connection's own device: with several lights, `autoConnect()` could pick another one.
     if (!this.#userDisconnected && this.#isAutoConnectEnabled() && this.#device) {
       await this.#waitForAdvertisement(this.#device);
@@ -307,7 +311,11 @@ export class ChainConnection extends EventTarget {
   }
 
   #nameOf(device) {
-    return device.name || t('ble.defaultName');
+    return this.#displayName?.(device) || device.name || t('ble.defaultName');
+  }
+
+  #currentName() {
+    return this.#device ? this.#nameOf(this.#device) : t('ble.defaultName');
   }
 
   #emitStatus(text) {

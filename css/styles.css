@@ -1,6 +1,6 @@
 /*
  * App styles (dark, iOS-like design).
- * Structure: colors and basics → title → color orb → locked state → shared building blocks
+ * Structure: colors and basics → status line → color orb → locked state → shared building blocks
  *         → color/white/favorites → sliders → effects → schedule → settings
  * States come from JavaScript via classes: body.connected, .active, .sel, .on, .off, .editing.
  */
@@ -56,13 +56,9 @@ button {
   touch-action: manipulation;
 }
 
-/* Title and status line */
-h1 {
-  font-size: 34px;
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: 0.37px;
-  margin: 14px 4px 6px;
+/* Status line (only shown when there is something to report) */
+.status-line[hidden] {
+  display: none;
 }
 .status-line {
   display: flex;

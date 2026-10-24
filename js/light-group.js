@@ -5,6 +5,8 @@
  * selected target: one light (its device id) or every light (`ALL`). It offers the same methods and events as
  * `ChainConnection`, so the UI modules work unchanged, plus:
  *   - `lightschange` the list of lights, their names, their connection or the selection changed
+ *   - `status`       detail: every pending message joined, or '' when there is nothing to say. Each light keeps
+ *                    its latest message until it is connected; messages name lights by their custom name.
  *
  * Removed lights are remembered as well: browsers without `BluetoothDevice.forget()` keep listing them in
  * `getDevices()`, and they must not come back on the next start.
@@ -28,6 +30,8 @@ export class LightGroup extends EventTarget {
   #bluetooth;
   #createConnection;
   /** @type {string} */ #target;
+  /** @type {Map<string, string>} latest message per light id; '' holds the group's own message */
+  #messages = new Map();
 
   /**
    * @param {object} options
@@ -52,15 +56,16 @@ export class LightGroup extends EventTarget {
 
   /** @returns {{ id: string, name: string, connected: boolean }[]} in pairing order */
   get lights() {
-    const names = this.#storage.get(KEYS.lightNames, {});
-    return [...this.#lights].map(([id, light]) => {
-      const bluetoothName = clean(light.name);
-      return {
-        id,
-        name: names['id:' + id] ?? names['name:' + bluetoothName] ?? bluetoothName,
-        connected: light.isConnected,
-      };
-    });
+    return [...this.#lights].map(([id, light]) => ({
+      id,
+      name: this.#nameFor(id, light.name),
+      connected: light.isConnected,
+    }));
+  }
+
+  /** Pending messages joined, or '' when every light is fine. */
+  get status() {
+    return [...this.#messages.values()].join(' · ');
   }
 
   /**
@@ -93,6 +98,7 @@ export class LightGroup extends EventTarget {
     this.#storage.set(KEYS.lightNames, names);
     this.#setRemoved(id, true);
     this.#lights.delete(id);
+    this.#setMessage(id, '');
     if (this.#target === id) this.select(ALL);
     else this.#emitChange();
     await light.forget();
@@ -112,6 +118,7 @@ export class LightGroup extends EventTarget {
   select(target) {
     this.#target = this.#lights.has(target) ? target : ALL;
     this.#storage.set(KEYS.target, this.#target);
+    this.#setMessage('', '');
     this.#emitChange();
   }
 
@@ -181,9 +188,19 @@ export class LightGroup extends EventTarget {
   #add(device) {
     const known = this.#lights.get(device.id);
     if (known) return known;
-    const light = this.#createConnection({ storage: this.#storage, isAutoConnectEnabled: this.#isAutoConnectEnabled });
-    light.addEventListener('status', (event) => this.#emitStatus(event.detail));
-    light.addEventListener('connectionchange', () => this.#emitChange());
+    const light = this.#createConnection({
+      storage: this.#storage,
+      isAutoConnectEnabled: this.#isAutoConnectEnabled,
+      displayName: (named) => this.#nameFor(named.id, named.name ?? ''),
+    });
+    light.addEventListener('status', (event) => this.#setMessage(device.id, event.detail));
+    light.addEventListener('connectionchange', () => {
+      if (light.isConnected) {
+        this.#setMessage(device.id, '');
+        this.#setMessage('', '');
+      }
+      this.#emitChange();
+    });
     this.#lights.set(device.id, light);
     this.#emitChange();
     return light;
@@ -199,8 +216,22 @@ export class LightGroup extends EventTarget {
     return selected ? [selected] : [...this.#lights.values()];
   }
 
+  /** Custom name if the user gave one, otherwise the cleaned Bluetooth name. */
+  #nameFor(id, bluetoothName) {
+    const names = this.#storage.get(KEYS.lightNames, {});
+    const fallback = clean(bluetoothName);
+    return names['id:' + id] ?? names['name:' + fallback] ?? fallback;
+  }
+
+  /** @param {string} id light id, or '' for the group itself @param {string} text '' clears the message */
+  #setMessage(id, text) {
+    if (text) this.#messages.set(id, text);
+    else if (!this.#messages.delete(id)) return;
+    this.dispatchEvent(new CustomEvent('status', { detail: this.status }));
+  }
+
   #emitStatus(text) {
-    this.dispatchEvent(new CustomEvent('status', { detail: text }));
+    this.#setMessage('', text);
   }
 
   #emitChange() {

@@ -3,9 +3,10 @@ import { t } from '../i18n.js';
 import { isIos } from '../util.js';
 import { $ } from './dom.js';
 
-/** @param {string} text */
+/** Shows `text` in the status line; an empty text hides the line (nothing to report). @param {string} text */
 export function setStatus(text) {
   $('status').textContent = text;
+  $('statusLine').hidden = !text;
 }
 
 /** Enables or locks all controls, depending on the connection. @param {boolean} connected */

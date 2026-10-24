@@ -7,6 +7,10 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** Stand-in for `ChainConnection`: records what is sent and connects instantly. */
 class FakeConnection extends EventTarget {
+  constructor(options) {
+    super();
+    this.options = options;
+  }
   device = null;
   sent = [];
   connected = false;
@@ -21,8 +25,18 @@ class FakeConnection extends EventTarget {
   }
   async connectDevice(device) {
     this.device = device;
+    this.emitStatus(`Connected to ${this.options.displayName(device)}`);
     this.connected = true;
     this.dispatchEvent(new CustomEvent('connectionchange', { detail: { connected: true } }));
+  }
+  emitStatus(text) {
+    this.dispatchEvent(new CustomEvent('status', { detail: text }));
+  }
+  /** Simulates a connection loss with the light's own message. */
+  lose() {
+    this.connected = false;
+    this.dispatchEvent(new CustomEvent('connectionchange', { detail: { connected: false } }));
+    this.emitStatus(`Connection to ${this.options.displayName(this.device)} lost.`);
   }
   send(bytes, key) {
     this.sent.push({ bytes, key });
@@ -49,8 +63,8 @@ function setup({ paired = [], picked = [], saved = {}, data = new Map() } = {}) 
     storage,
     isAutoConnectEnabled: () => true,
     bluetooth,
-    createConnection: () => {
-      const connection = new FakeConnection();
+    createConnection: (options) => {
+      const connection = new FakeConnection(options);
       connections.push(connection);
       return connection;
     },
@@ -247,4 +261,54 @@ test('removing a light deletes its custom name', async () => {
   await group.remove('n');
   await group.connectWithPicker();
   assert.equal(nameOf(group, 'n'), 'ELK-BLEDOM');
+});
+
+test('the status is empty while every light is connected', async () => {
+  const { group } = setup({ paired: [strip, bars] });
+  const shown = [];
+  group.addEventListener('status', (event) => shown.push(event.detail));
+  await group.autoConnect();
+  assert.equal(group.status, '');
+  assert.equal(shown.at(-1), '');
+});
+
+test("a light's problem is shown until it is connected again", async () => {
+  const { group, connections } = setup({ paired: [strip, bars] });
+  await group.autoConnect();
+  connections[1].lose();
+  assert.equal(group.status, 'Connection to MELK-OC21 CF lost.');
+  await connections[1].connectDevice(bars);
+  assert.equal(group.status, '');
+});
+
+test('problems of several lights are shown together', async () => {
+  const { group, connections } = setup({ paired: [strip, bars] });
+  await group.autoConnect();
+  connections[0].lose();
+  connections[1].lose();
+  assert.equal(group.status, 'Connection to ELK-BLEDDM lost. · Connection to MELK-OC21 CF lost.');
+});
+
+test('light messages use the custom name', async () => {
+  const { group, connections } = setup({ paired: [bars] });
+  await group.autoConnect();
+  group.rename('b', 'tv');
+  connections[0].lose();
+  assert.equal(group.status, 'Connection to tv lost.');
+});
+
+test('removing a light drops its message', async () => {
+  const { group, connections } = setup({ paired: [strip, bars] });
+  await group.autoConnect();
+  connections[1].lose();
+  await group.remove('b');
+  assert.equal(group.status, '');
+});
+
+test('a group message is cleared once a light connects', async () => {
+  const { group } = setup({ paired: [], picked: [strip] });
+  await group.autoConnect();
+  assert.notEqual(group.status, '');
+  await group.connectWithPicker();
+  assert.equal(group.status, '');
 });
